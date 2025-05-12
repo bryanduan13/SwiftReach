@@ -68,7 +68,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    active={
+                    isActive={
                       item.path === '/'
                         ? location.pathname === '/'
                         : location.pathname.startsWith(item.path)
