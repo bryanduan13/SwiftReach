@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format, addDays, subDays, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,19 @@ import MonthView from '@/components/calendar/MonthView';
 import CalendarFilter from '@/components/calendar/CalendarFilter';
 import GoogleCalendarIntegration from '@/components/calendar/GoogleCalendarIntegration';
 
-const mockEvents = [
+// Define the Event type to match the interface expected by the view components
+interface Event {
+  id: number;
+  title: string;
+  client: string;
+  location: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+  type: 'showing' | 'meeting' | 'open-house' | 'call';
+}
+
+const mockEvents: Event[] = [
   {
     id: 1,
     title: 'Property Showing',

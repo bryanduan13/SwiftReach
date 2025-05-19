@@ -2,29 +2,12 @@
 import React from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-interface Event {
-  id: number;
-  title: string;
-  client: string;
-  location: string;
-  date: Date;
-  startTime: string;
-  endTime: string;
-  type: 'showing' | 'meeting' | 'open-house' | 'call';
-}
+import { Event, eventTypeColors } from './types';
 
 interface MonthViewProps {
   date: Date;
   events: Event[];
 }
-
-const eventTypeColors = {
-  showing: 'bg-blue-100 border-blue-300 text-blue-800',
-  meeting: 'bg-purple-100 border-purple-300 text-purple-800',
-  'open-house': 'bg-green-100 border-green-300 text-green-800',
-  call: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-};
 
 export const MonthView: React.FC<MonthViewProps> = ({ date, events }) => {
   const monthStart = startOfMonth(date);

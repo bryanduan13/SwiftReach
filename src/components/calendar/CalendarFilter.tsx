@@ -3,14 +3,17 @@ import React from 'react';
 import { Check, Square } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
+// Define the filter types to match the event types
+type EventFilterTypes = {
+  showing: boolean;
+  meeting: boolean;
+  'open-house': boolean;
+  call: boolean;
+};
+
 interface CalendarFilterProps {
-  filters: {
-    showing: boolean;
-    meeting: boolean;
-    'open-house': boolean;
-    call: boolean;
-  };
-  onFilterChange: (key: string, value: boolean) => void;
+  filters: EventFilterTypes;
+  onFilterChange: (key: keyof EventFilterTypes, value: boolean) => void;
 }
 
 export const CalendarFilter = ({ filters, onFilterChange }: CalendarFilterProps) => {
