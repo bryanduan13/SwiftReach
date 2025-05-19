@@ -12,8 +12,33 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const TopBar = () => {
+  const { user, signOut } = useAuth();
+  
+  // Get initials from user's email or full name
+  const getInitials = () => {
+    if (!user) return 'U';
+    
+    const fullName = user.user_metadata?.full_name;
+    if (fullName) {
+      return fullName.split(' ').map(name => name[0]).join('').toUpperCase().substring(0, 2);
+    }
+    
+    if (user.email) {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+    
+    return 'U';
+  };
+  
+  // Get display name
+  const getDisplayName = () => {
+    if (!user) return 'User';
+    return user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+  };
+
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center px-4">
@@ -59,9 +84,9 @@ export const TopBar = () => {
                 className="gap-2 pl-2 pr-4"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarFallback>{getInitials()}</AvatarFallback>
                 </Avatar>
-                <span className="hidden md:inline-flex">John Doe</span>
+                <span className="hidden md:inline-flex">{getDisplayName()}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -70,7 +95,7 @@ export const TopBar = () => {
               <DropdownMenuItem>Profile</DropdownMenuItem>
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => signOut()}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
