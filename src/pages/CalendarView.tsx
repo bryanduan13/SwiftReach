@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import DayView from '@/components/calendar/DayView';
+import WeekView from '@/components/calendar/WeekView';
+import MonthView from '@/components/calendar/MonthView';
+import CalendarFilter from '@/components/calendar/CalendarFilter';
+import GoogleCalendarIntegration from '@/components/calendar/GoogleCalendarIntegration';
 
 const mockEvents = [
   {
@@ -71,27 +76,80 @@ const mockEvents = [
     startTime: '11:00 AM',
     endTime: '11:30 AM',
     type: 'call'
+  },
+  // Add more events for better testing
+  {
+    id: 5,
+    title: 'Property Viewing',
+    client: 'John Smith',
+    location: '789 Pine St.',
+    date: addDays(new Date(), 2),
+    startTime: '3:00 PM',
+    endTime: '4:00 PM',
+    type: 'showing'
+  },
+  {
+    id: 6,
+    title: 'Team Meeting',
+    client: 'Real Estate Team',
+    location: 'Conference Room',
+    date: addDays(new Date(), 3),
+    startTime: '9:00 AM',
+    endTime: '10:30 AM',
+    type: 'meeting'
+  },
+  {
+    id: 7,
+    title: 'Client Call',
+    client: 'David Wilson',
+    location: 'Phone',
+    date: addDays(new Date(), 4),
+    startTime: '2:30 PM',
+    endTime: '3:00 PM',
+    type: 'call'
+  },
+  {
+    id: 8,
+    title: 'Weekend Open House',
+    client: 'Multiple Clients',
+    location: '101 Maple Dr.',
+    date: addDays(new Date(), 5),
+    startTime: '1:00 PM',
+    endTime: '5:00 PM',
+    type: 'open-house'
   }
 ];
-
-const eventTypeColors = {
-  showing: 'bg-blue-100 border-blue-300 text-blue-800',
-  meeting: 'bg-purple-100 border-purple-300 text-purple-800',
-  'open-house': 'bg-green-100 border-green-300 text-green-800',
-  call: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-};
 
 export const CalendarView = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [view, setView] = useState<string>("day");
+  const [filters, setFilters] = useState({
+    showing: true,
+    meeting: true,
+    'open-house': true,
+    call: true
+  });
   
   const formattedDate = format(date, 'MMM d, yyyy');
-  const dayEvents = mockEvents.filter(
-    event => format(event.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+  
+  // Filter events based on selected filters and current date view
+  const filteredEvents = mockEvents.filter(
+    event => filters[event.type as keyof typeof filters]
   );
 
-  const handlePrevDay = () => setDate(subDays(date, 1));
-  const handleNextDay = () => setDate(addDays(date, 1));
+  const handleDateChange = (change: number) => {
+    if (view === 'day') {
+      setDate(prevDate => change > 0 ? addDays(prevDate, change) : subDays(prevDate, Math.abs(change)));
+    } else if (view === 'week') {
+      setDate(prevDate => change > 0 ? addWeeks(prevDate, change) : subWeeks(prevDate, Math.abs(change)));
+    } else if (view === 'month') {
+      setDate(prevDate => change > 0 ? addMonths(prevDate, change) : subMonths(prevDate, Math.abs(change)));
+    }
+  };
+
+  const handleFilterChange = (key: string, value: boolean) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   return (
     <div className="space-y-6">
@@ -174,11 +232,17 @@ export const CalendarView = () => {
             <TabsTrigger value="month">Month</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handlePrevDay}>
+            <Button variant="outline" size="icon" onClick={() => handleDateChange(-1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="font-medium">{formattedDate}</div>
-            <Button variant="outline" size="icon" onClick={handleNextDay}>
+            <div className="font-medium">{
+              view === 'month' 
+                ? format(date, 'MMMM yyyy')
+                : view === 'week'
+                  ? `Week of ${format(date, 'MMM d')}`
+                  : formattedDate
+            }</div>
+            <Button variant="outline" size="icon" onClick={() => handleDateChange(1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -187,67 +251,23 @@ export const CalendarView = () => {
         <div className="grid md:grid-cols-3 gap-6">
           <div className={`${view === 'month' ? 'md:col-span-3' : 'md:col-span-2'}`}>
             <TabsContent value="day" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Day View</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {dayEvents.length > 0 ? (
-                      dayEvents.map((event) => (
-                        <div 
-                          key={event.id} 
-                          className={`p-3 rounded-lg border ${eventTypeColors[event.type as keyof typeof eventTypeColors]}`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="font-medium">{event.title}</h3>
-                              <p className="text-sm">{event.client}</p>
-                            </div>
-                            <div className="text-sm font-medium">
-                              {event.startTime} - {event.endTime}
-                            </div>
-                          </div>
-                          <p className="text-sm mt-1">{event.location}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-4 text-center text-muted-foreground">
-                        No events scheduled for today
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <DayView 
+                date={date} 
+                events={filteredEvents.filter(event => 
+                  format(event.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+                )} 
+              />
             </TabsContent>
             <TabsContent value="week" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Week View</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    Week calendar view will be implemented in the next version
-                  </div>
-                </CardContent>
-              </Card>
+              <WeekView date={date} events={filteredEvents} />
             </TabsContent>
             <TabsContent value="month" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Month View</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    Month calendar view will be implemented in the next version
-                  </div>
-                </CardContent>
-              </Card>
+              <MonthView date={date} events={filteredEvents} />
             </TabsContent>
           </div>
 
           {view !== 'month' && (
-            <div className="md:col-span-1">
+            <div className="md:col-span-1 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Calendar</CardTitle>
@@ -260,9 +280,15 @@ export const CalendarView = () => {
                     className="rounded-md border pointer-events-auto"
                   />
                   <div className="mt-4">
+                    <CalendarFilter 
+                      filters={filters} 
+                      onFilterChange={handleFilterChange}
+                    />
+                  </div>
+                  <div className="mt-4">
                     <h3 className="font-medium mb-2">Upcoming Events</h3>
                     <div className="space-y-2">
-                      {mockEvents.slice(0, 3).map((event, i) => (
+                      {filteredEvents.slice(0, 3).map((event, i) => (
                         <div key={i} className="text-sm flex justify-between border-b pb-1">
                           <span>{event.title}</span>
                           <span className="text-muted-foreground">{format(event.date, 'MMM d')}</span>
@@ -272,6 +298,7 @@ export const CalendarView = () => {
                   </div>
                 </CardContent>
               </Card>
+              <GoogleCalendarIntegration />
             </div>
           )}
         </div>
