@@ -11,8 +11,8 @@ export interface Event {
 }
 
 export const eventTypeColors = {
-  showing: 'bg-blue-100 border-blue-300 text-blue-800',
-  meeting: 'bg-purple-100 border-purple-300 text-purple-800',
-  'open-house': 'bg-green-100 border-green-300 text-green-800',
-  call: 'bg-yellow-100 border-yellow-300 text-yellow-800',
+  showing: 'bg-[#FAF3E0]/70 border-[#F57C00] text-[#3E2723]',
+  meeting: 'bg-[#D7CCC8]/70 border-[#F57C00] text-[#3E2723]',
+  'open-house': 'bg-[#F57C00]/20 border-[#F57C00] text-[#3E2723]',
+  call: 'bg-[#BF360C]/10 border-[#F57C00] text-[#3E2723]',
 };
