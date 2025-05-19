@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,28 +94,57 @@ export const Dashboard = () => {
         
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Lead Conversion</CardTitle>
-            <CardDescription>Pipeline progress this month</CardDescription>
+            <CardTitle>Recent Messages</CardTitle>
+            <CardDescription>Latest communications from clients</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-8">
+          <CardContent className="space-y-4">
             {[
-              { stage: 'Initial Contact', count: 18, total: 24, color: 'bg-blue-500' },
-              { stage: 'Property Showing', count: 12, total: 24, color: 'bg-indigo-500' },
-              { stage: 'Negotiation', count: 8, total: 24, color: 'bg-purple-500' },
-              { stage: 'Contract', count: 5, total: 24, color: 'bg-pink-500' },
-              { stage: 'Closed', count: 3, total: 24, color: 'bg-green-500' },
-            ].map((stage) => (
-              <div key={stage.stage} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{stage.stage}</span>
-                  <span className="font-medium">{stage.count}/{stage.total}</span>
+              { 
+                client: 'Emma Thompson', 
+                preview: 'Hi there, I\'m interested in the property at 123 Main St. Is it still available?', 
+                time: '10:43 AM',
+                unread: true
+              },
+              { 
+                client: 'Michael Chen', 
+                preview: 'Thanks for showing me the house yesterday. I have a few more questions about the financing options.', 
+                time: 'Yesterday',
+                unread: false
+              },
+              { 
+                client: 'Sarah Johnson', 
+                preview: 'I\'d like to make an offer on the Oak Street property. Can we discuss the details?', 
+                time: 'Yesterday',
+                unread: true
+              },
+              { 
+                client: 'David Rodriguez', 
+                preview: 'When can we schedule the next viewing? I\'m available this weekend.', 
+                time: 'Monday',
+                unread: false
+              },
+            ].map((message, index) => (
+              <div key={index} className="rounded-lg border p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback>{message.client.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <p className="text-sm font-medium">{message.client}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{message.time}</span>
+                    {message.unread && <div className="h-2 w-2 bg-primary rounded-full"></div>}
+                  </div>
                 </div>
-                <Progress
-                  value={(stage.count / stage.total) * 100}
-                  className={stage.color}
-                />
+                <p className="text-sm text-muted-foreground line-clamp-2">{message.preview}</p>
               </div>
             ))}
+            <div className="pt-2">
+              <Button variant="outline" size="sm" asChild className="w-full">
+                <Link to="/inbox">View All Messages</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -123,3 +153,4 @@ export const Dashboard = () => {
 };
 
 export default Dashboard;
+
