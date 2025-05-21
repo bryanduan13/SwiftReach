@@ -1,0 +1,33 @@
+
+{
+  "expo": {
+    "name": "Real Estate CRM",
+    "slug": "real-estate-crm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF3E0"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.realestate.crm"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAF3E0"
+      },
+      "package": "com.realestate.crm"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
