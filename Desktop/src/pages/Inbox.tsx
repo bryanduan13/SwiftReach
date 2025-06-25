@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Search, Send, Paperclip } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { useLocation } from 'react-router-dom';
 import { 
   Card, 
   CardContent 
@@ -73,8 +74,20 @@ const mockMessages = [
 ];
 
 export const Inbox = () => {
+  const location = useLocation();
   const [selectedConversation, setSelectedConversation] = useState(mockConversations[0]);
   const [message, setMessage] = useState('');
+
+  // Handle navigation from dashboard
+  useEffect(() => {
+    if (location.state?.selectedConversationId) {
+      const conversationId = location.state.selectedConversationId;
+      const conversation = mockConversations.find(conv => conv.id === conversationId);
+      if (conversation) {
+        setSelectedConversation(conversation);
+      }
+    }
+  }, [location.state]);
 
   return (
     <div className="space-y-6">

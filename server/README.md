@@ -25,6 +25,15 @@ This is the FastAPI backend for the Real Estate CRM application, designed to sup
 ```bash
 cd server
 pip install -r requirements.txt
+# fastapi==0.104.1
+# uvicorn==0.23.2
+# pydantic>=2.7.0
+# python-dotenv==1.0.0
+# httpx>=0.25.0
+# supabase>=2.0.3
+# python-multipart==0.0.6
+# pyjwt==2.8.0
+#pip install "anaconda-cloud-auth>=0.7.1"
 ```
 
 ### Running the API

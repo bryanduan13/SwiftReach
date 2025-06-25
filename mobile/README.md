@@ -29,6 +29,15 @@ cd mobile
 3. Install dependencies:
 ```bash
 npm install
+#install Node.js first
+#/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+#brew install node
+#node --version
+#npm --version
+#npm install
+#npm install -g npm@11.4.1
+#brew update
+#brew install watchman
 ```
 
 ### Running the App

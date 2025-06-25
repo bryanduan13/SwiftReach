@@ -21,19 +21,38 @@ class ClientBase(BaseModel):
 class ClientCreate(ClientBase):
     pass
 
-class ClientUpdate(ClientBase):
+class ClientUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
 
 class ClientResponse(ClientBase):
     id: UUID
+    agent_id: UUID
+    created_at: str
+    updated_at: str
+    avatar_url: Optional[str] = None
+
+class ClientCreate(ClientBase):
+    pass
+
+class ClientUpdate(ClientBase):
+    full_name: Optional[str] = None
+
+class ClientResponse(ClientBase):
+    id: UUID
+    created_at: str
+    updated_at: str
     agent_id: UUID
     created_at: datetime
     updated_at: datetime
 
 @router.get("/", response_model=List[Dict[str, Any]])
 async def get_clients(
-    status: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
     limit: int = Query(100, gt=0, le=500),
     offset: int = Query(0, ge=0),
     user: dict = Depends(get_current_user), 
@@ -41,10 +60,10 @@ async def get_clients(
 ):
     """Get all clients for the current agent"""
     try:
-        query = supabase.table("clients").select("*").eq("agent_id", user.get("id")).order("created_at", desc=True)
+        query = supabase.table("clients").select("*").eq("agent_id", user.id).order("created_at", desc=True)
         
-        if status:
-            query = query.eq("status", status)
+        if status_filter:
+            query = query.eq("status", status_filter)
             
         query = query.range(offset, offset + limit - 1)
         response = query.execute()
@@ -52,7 +71,7 @@ async def get_clients(
         return response.data
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            status_code=500, 
             detail=f"Failed to retrieve clients: {str(e)}"
         )
 
@@ -65,7 +84,14 @@ async def create_client(
     """Create a new client"""
     try:
         client_data = client.dict()
-        client_data["agent_id"] = user.get("id")
+        client_data["agent_id"] = user.id  # Changed from user.get("id") to user.id
+        client_data["created_at"] = datetime.now().isoformat()
+        client_data["updated_at"] = datetime.now().isoformat()
+        
+        # Remove None values
+        client_data = {k: v for k, v in client_data.items() if v is not None}
+        
+        print(f"Creating client with data: {client_data}")  # Debug log
         
         response = supabase.table("clients").insert(client_data).execute()
         
@@ -74,9 +100,10 @@ async def create_client(
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Client creation failed"
+                detail="Client creation failed - no data returned"
             )
     except Exception as e:
+        print(f"Error creating client: {str(e)}")  # Debug log
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create client: {str(e)}"
@@ -160,23 +187,18 @@ async def delete_client(
 ):
     """Delete a client by ID"""
     try:
-        # First, verify client exists and belongs to the current agent
-        check_response = supabase.table("clients").select("id").eq("id", str(client_id)).eq("agent_id", user.get("id")).single()
+        # Use service role or bypass RLS for this operation
+        response = supabase.table("clients").delete().eq("id", str(client_id)).eq("agent_id", user.id).execute()
         
-        if not check_response.data:
+        if not response.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Client not found or you don't have permission to delete this client"
             )
             
-        supabase.table("clients").delete().eq("id", str(client_id)).execute()
         return None
     except Exception as e:
-        if "not_found" in str(e).lower() or "no rows" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Client not found"
-            )
+        print(f"Delete error: {str(e)}")  # Add logging
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete client: {str(e)}"
