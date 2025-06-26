@@ -1,97 +1,101 @@
 
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { theme } from '../components/ThemeConfig';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-
-interface Conversation {
-  id: number;
-  contact: {
-    name: string;
-    email: string;
-  };
-  lastMessage: string;
-  timestamp: string;
-  unread: boolean;
-}
+import { useConversations } from '../hooks/useConversations';
+import { Conversation } from '../types/conversations';
 
 export default function MessagesScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: 1,
-      contact: { name: 'Emma Thompson', email: 'emma@example.com' },
-      lastMessage: "Hi there, I'm interested in the property at 123 Main St. Is it still available?",
-      timestamp: '10:43 AM',
-      unread: true
-    },
-    {
-      id: 2,
-      contact: { name: 'Michael Chen', email: 'michael@example.com' },
-      lastMessage: "Thanks for showing me the house yesterday. I have a few more questions.",
-      timestamp: 'Yesterday',
-      unread: false
-    },
-    {
-      id: 3,
-      contact: { name: 'Sarah Johnson', email: 'sarah@example.com' },
-      lastMessage: "I'd like to make an offer on the Oak Street property.",
-      timestamp: 'Yesterday',
-      unread: true
-    },
-    {
-      id: 4,
-      contact: { name: 'David Rodriguez', email: 'david@example.com' },
-      lastMessage: "When can we schedule the next viewing?",
-      timestamp: 'Monday',
-      unread: false
-    },
-  ]);
+  
+  // Use real conversations from database
+  const { data: conversations = [], isLoading } = useConversations();
 
   const filteredConversations = conversations.filter(conversation => 
-    conversation.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conversation.contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conversation.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+    conversation.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conversation.client_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conversation.messages?.some(msg => 
+      msg.content.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   );
 
   const navigateToChat = (conversation: Conversation) => {
     navigation.navigate(
       'Chat' as never,
-      { clientName: conversation.contact.name, conversation } as never
+      { clientName: conversation.client_name, conversation } as never
     );
   };
 
-  const renderConversation = ({ item }: { item: Conversation }) => (
-    <TouchableOpacity 
-      style={styles.conversationItem}
-      onPress={() => navigateToChat(item)}
-    >
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.contact.name.split(' ').map(n => n[0]).join('')}
-        </Text>
-      </View>
-      
-      <View style={styles.conversationContent}>
-        <View style={styles.conversationHeader}>
-          <Text style={styles.contactName}>{item.contact.name}</Text>
-          <Text style={styles.timestamp}>{item.timestamp}</Text>
+  const renderConversation = ({ item }: { item: Conversation }) => {
+    const lastMessage = item.messages?.[item.messages.length - 1];
+    
+    return (
+      <TouchableOpacity 
+        style={styles.conversationItem}
+        onPress={() => navigateToChat(item)}
+      >
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {item.client_name?.split(' ').map(n => n[0]).join('') || 'U'}
+          </Text>
         </View>
         
-        <View style={styles.conversationFooter}>
-          <Text 
-            style={[styles.lastMessage, item.unread && styles.unreadMessage]} 
-            numberOfLines={1}
-          >
-            {item.lastMessage}
-          </Text>
-          {item.unread && <View style={styles.unreadIndicator} />}
+        <View style={styles.conversationContent}>
+          <View style={styles.conversationHeader}>
+            <Text style={styles.contactName}>{item.client_name || 'Unknown'}</Text>
+            <Text style={styles.timestamp}>
+              {new Date(item.updated_at).toLocaleDateString()}
+            </Text>
+          </View>
+          
+          <View style={styles.conversationFooter}>
+            <Text 
+              style={styles.lastMessage} 
+              numberOfLines={1}
+            >
+              {lastMessage?.content || 'No messages yet'}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="chatbubbles-outline" size={64} color={theme.colors.grey} />
+      <Text style={styles.emptyTitle}>No conversations yet</Text>
+      <Text style={styles.emptyDescription}>
+        You haven't started any conversations yet. Begin engaging with your leads to build relationships.
+      </Text>
+    </View>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color={theme.colors.grey} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={theme.colors.grey}
+            />
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading conversations...</Text>
         </View>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -100,42 +104,22 @@ export default function MessagesScreen() {
           <Ionicons name="search" size={20} color={theme.colors.grey} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search messages..."
+            placeholder="Search conversations..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor={theme.colors.grey}
           />
-          {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={theme.colors.grey} />
-            </TouchableOpacity>
-          ) : null}
         </View>
       </View>
-      
-      {filteredConversations.length > 0 ? (
-        <FlatList
-          data={filteredConversations}
-          renderItem={renderConversation}
-          keyExtractor={item => item.id.toString()}
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubbles-outline" size={60} color={theme.colors.grey} />
-          <Text style={styles.emptyText}>No messages found</Text>
-          {searchQuery ? (
-            <Text style={styles.emptySubText}>Try a different search term</Text>
-          ) : (
-            <Text style={styles.emptySubText}>
-              When you start conversations with clients, they'll appear here
-            </Text>
-          )}
-        </View>
-      )}
-      
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="create" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
+
+      <FlatList
+        data={filteredConversations}
+        renderItem={renderConversation}
+        keyExtractor={(item) => item.id.toString()}
+        style={styles.conversationsList}
+        ListEmptyComponent={renderEmptyState}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
@@ -256,5 +240,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 64,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyDescription: {
+    fontSize: 14,
+    color: theme.colors.grey,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: theme.colors.grey,
   },
 });

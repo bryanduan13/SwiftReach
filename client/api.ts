@@ -1,5 +1,16 @@
 
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
+import {
+  Conversation,
+  ConversationCreate,
+  ConversationUpdate,
+  ConversationFilters,
+  SimilaritySearchRequest,
+  SimilaritySearchResult,
+  MessageType,
+  MessageDirection,
+  MessageStatus
+} from '../Desktop/src/types/conversations';
 
 // Create an Axios instance with default config
 const API_URL = 'http://localhost:8000/api';
@@ -155,6 +166,49 @@ export const calendarApi = {
   }) => {
     return api.post('/calendar', event);
   },
+};
+
+// Conversations API with proper typing
+export const conversationsApi = {
+  // Get all conversations
+  getConversations: (params?: ConversationFilters): Promise<AxiosResponse<Conversation[]>> => {
+    const searchParams = new URLSearchParams();
+    if (params?.skip) searchParams.append('skip', params.skip.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.client_id) searchParams.append('client_id', params.client_id);
+    if (params?.message_type) searchParams.append('message_type', params.message_type);
+    if (params?.status) searchParams.append('status', params.status);
+    
+    return api.get<Conversation[]>(`/conversations/?${searchParams.toString()}`);
+  },
+
+  // Get specific conversation
+  getConversation: (id: string): Promise<AxiosResponse<Conversation>> => 
+    api.get<Conversation>(`/conversations/${id}`),
+
+  // Create conversation
+  createConversation: (data: ConversationCreate): Promise<AxiosResponse<Conversation>> => 
+    api.post<Conversation>('/conversations/', data),
+
+  // Update conversation
+  updateConversation: (id: string, data: ConversationUpdate): Promise<AxiosResponse<Conversation>> => 
+    api.put<Conversation>(`/conversations/${id}`, data),
+
+  // Delete conversation
+  deleteConversation: (id: string): Promise<AxiosResponse<{ message: string }>> => 
+    api.delete(`/conversations/${id}`),
+
+  // Generate embedding
+  generateEmbedding: (id: string): Promise<AxiosResponse<{ message: string }>> => 
+    api.post(`/conversations/${id}/generate-embedding`),
+
+  // Semantic search
+  semanticSearch: (data: SimilaritySearchRequest): Promise<AxiosResponse<SimilaritySearchResult[]>> => 
+    api.post<SimilaritySearchResult[]>('/conversations/search', data),
+
+  // Batch generate embeddings
+  batchGenerateEmbeddings: (): Promise<AxiosResponse<{ message: string }>> => 
+    api.post('/conversations/batch-generate-embeddings')
 };
 
 export default api;

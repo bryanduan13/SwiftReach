@@ -42,6 +42,7 @@ pip install -r requirements.txt
 cd server
 uvicorn main:app --reload
 ```
+deactivate
 
 The API will be available at [http://localhost:8000](http://localhost:8000)
 

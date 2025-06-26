@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 import httpx
 from supabase import create_client, Client
 
-from routers import auth, clients, calendar
+from routers import auth, clients, calendar, conversations
 
 app = FastAPI(
     title="Real Estate CRM API",
@@ -44,9 +44,10 @@ def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Include routers
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(clients.router, prefix="/api/clients", tags=["Clients"])
-app.include_router(calendar.router, prefix="/api/calendar", tags=["Calendar"])
+app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
+app.include_router(calendar.router, prefix="/api/calendar", tags=["calendar"])
+app.include_router(conversations.router, prefix="/api", tags=["conversations"])
 
 @app.get("/")
 async def root():
