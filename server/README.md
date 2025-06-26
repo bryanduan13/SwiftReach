@@ -41,6 +41,7 @@ pip install -r requirements.txt
 ```bash
 cd server
 uvicorn main:app --reload
+python3 -m uvicorn main:app --reload
 ```
 deactivate
 

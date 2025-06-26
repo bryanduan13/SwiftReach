@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,7 +62,7 @@ import { useForm } from 'react-hook-form';
 import { useCreateClient, useDeleteClient } from '@/hooks/useApi';
 import { toast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { clientsApi } from '../../../client/api';
+import { clientsApi } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
 const statusColors = {

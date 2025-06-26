@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientsApi, calendarApi } from '../../../client/api';
+import { clientsApi, calendarApi } from '@/lib/api';
 
 // Hook for fetching dashboard stats
 export const useDashboardStats = () => {
