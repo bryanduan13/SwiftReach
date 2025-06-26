@@ -7,6 +7,7 @@ from uuid import UUID
 from enum import Enum
 import openai
 import os
+import asyncio
 from dependencies import get_supabase, get_current_user
 
 router = APIRouter()
@@ -108,11 +109,11 @@ class SimilaritySearchResult(BaseModel):
 @router.post("/conversations/", response_model=ConversationResponse)
 async def create_conversation(
     conversation: ConversationCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
     try:
-        print(f"Creating conversation for user: {current_user.id}")
+        print(f"Creating conversation for user: {current_user['id']}")
         
         # Convert conversation to dict and handle UUID serialization
         conversation_data = conversation.dict()
@@ -126,7 +127,7 @@ async def create_conversation(
             conversation_data['reply_to_id'] = str(conversation_data['reply_to_id'])
         
         # Add user_id and embedding fields
-        conversation_data['user_id'] = str(current_user.id)
+        conversation_data['user_id'] = str(current_user['id'])
         conversation_data['embedding_generated'] = False
         
         print(f"Final conversation data to insert: {conversation_data}")
@@ -172,7 +173,7 @@ async def get_conversations(
 ):
     """Get conversations with optional filtering"""
     try:
-        query = supabase.table("conversations").select("*").eq("user_id", current_user["id"])
+        query = supabase.table("conversations").select("*").eq("user_id", current_user['id'])
         
         if client_id:
             query = query.eq("client_id", str(client_id))
@@ -196,7 +197,7 @@ async def get_conversation(
 ):
     """Get a specific conversation"""
     try:
-        result = supabase.table("conversations").select("*").eq("id", str(conversation_id)).eq("user_id", current_user["id"]).execute()
+        result = supabase.table("conversations").select("*").eq("id", str(conversation_id)).eq("user_id", current_user['id']).execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -216,7 +217,7 @@ async def update_conversation(
     """Update a conversation"""
     try:
         # Check if conversation exists and belongs to user
-        existing = supabase.table("conversations").select("*").eq("id", str(conversation_id)).eq("user_id", current_user["id"]).execute()
+        existing = supabase.table("conversations").select("*").eq("id", str(conversation_id)).eq("user_id", current_user['id']).execute()
         
         if not existing.data:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -238,7 +239,7 @@ async def delete_conversation(
 ):
     """Delete a conversation (soft delete by setting status to deleted)"""
     try:
-        result = supabase.table("conversations").update({"status": "deleted"}).eq("id", str(conversation_id)).eq("user_id", current_user["id"]).execute()
+        result = supabase.table("conversations").update({"status": "deleted"}).eq("id", str(conversation_id)).eq("user_id", current_user['id']).execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -257,7 +258,7 @@ async def generate_embedding(
 ):
     """Generate embedding for a specific conversation"""
     try:
-        await generate_embedding_for_conversation(conversation_id, supabase, current_user["id"])
+        await generate_embedding_for_conversation(conversation_id, supabase, current_user['id'])
         return {"message": "Embedding generated successfully"}
     
     except Exception as e:
@@ -285,7 +286,7 @@ async def semantic_search(
                 "query_embedding": query_embedding,
                 "match_threshold": search_request.match_threshold,
                 "match_count": search_request.match_count,
-                "filter_user_id": current_user["id"]
+                "filter_user_id": current_user['id']
             }
         ).execute()
         
@@ -302,7 +303,7 @@ async def batch_generate_embeddings(
     """Generate embeddings for all conversations without embeddings"""
     try:
         # Get conversations without embeddings
-        result = supabase.table("conversations").select("id, content").eq("user_id", current_user["id"]).eq("embedding_generated", False).execute()
+        result = supabase.table("conversations").select("id, content").eq("user_id", current_user['id']).eq("embedding_generated", False).execute()
         
         generated_count = 0
         for conversation in result.data:
