@@ -1,4 +1,3 @@
-
 from fastapi import Depends, Header, HTTPException, status
 from supabase import create_client, Client
 import jwt
@@ -16,7 +15,7 @@ def get_supabase() -> Client:
 async def get_current_user(
     authorization: str = Header(None), 
     supabase: Client = Depends(get_supabase)
-) -> Dict[str, Any]:
+) -> Any:
     """
     Dependency to get the current authenticated user based on JWT token
     """
