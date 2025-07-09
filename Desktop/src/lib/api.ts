@@ -12,7 +12,7 @@ import {
 } from '../types/conversations';
 
 // Create an Axios instance with default config
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://127.0.0.1:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,

@@ -2,6 +2,7 @@ from fastapi import Depends, Header, HTTPException, status
 from supabase import create_client, Client
 import jwt
 from typing import Optional, Dict, Any
+from fastapi import Header, Depends, HTTPException, status
 
 # Import Supabase configuration from environment variables
 SUPABASE_URL = "https://vkakkcpxfqwtmjwhqdhu.supabase.co"

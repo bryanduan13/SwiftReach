@@ -1,18 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bot, Send, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Send, Bot, User } from 'lucide-react';
+import { chatbotService } from '@/integrations/chatbotService';
 
-type Message = {
+interface Message {
   id: number;
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
-};
+}
 
 export const AiAssistant = () => {
   const [input, setInput] = useState('');
@@ -24,8 +24,18 @@ export const AiAssistant = () => {
       timestamp: new Date(),
     },
   ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = () => {
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = async () => {
     if (input.trim() === '') return;
 
     // Add user message
@@ -37,135 +47,161 @@ export const AiAssistant = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
+    setIsLoading(true);
 
-    // Simulate AI response after a short delay
-    setTimeout(() => {
-      const aiResponses: {[key: string]: string} = {
-        'lead': "For effective lead follow-up, I recommend making initial contact within 5 minutes, then following up at 3 days, 1 week, and 2 weeks with personalized messages. Would you like me to draft some follow-up templates for you?",
-        'market': "Based on recent data, the local market has seen a 5% increase in home values over the past quarter. Inventory is currently low, making it a seller's market in most neighborhoods. Would you like more specific information about a particular area?",
-        'property': "When discussing property features with clients, focus on highlighting unique selling points like location benefits, recent upgrades, and lifestyle advantages rather than just listing features. Would you like help creating compelling property descriptions?",
-        'script': "Here's a proven call script for new leads: 'Hi [name], this is [your name] from RealEstate CRM. I noticed you were interested in properties in [area]. I have some great options that might work for you. Do you have a moment to discuss what you're looking for?'"
-      };
-
-      // Determine which response to use based on keywords in user message
-      let responseText = "I'll help you with that! To give you the most relevant information, could you provide more details about what you're looking for?";
+    try {
+      // Use the actual chatbot service
+      const response = await chatbotService.processMessage(currentInput);
       
-      const lowerCaseInput = input.toLowerCase();
-      if (lowerCaseInput.includes('lead') || lowerCaseInput.includes('follow up') || lowerCaseInput.includes('prospect')) {
-        responseText = aiResponses.lead;
-      } else if (lowerCaseInput.includes('market') || lowerCaseInput.includes('trend') || lowerCaseInput.includes('prices')) {
-        responseText = aiResponses.market;
-      } else if (lowerCaseInput.includes('property') || lowerCaseInput.includes('house') || lowerCaseInput.includes('feature')) {
-        responseText = aiResponses.property;
-      } else if (lowerCaseInput.includes('script') || lowerCaseInput.includes('what to say') || lowerCaseInput.includes('call')) {
-        responseText = aiResponses.script;
-      }
-
       const aiMessage: Message = {
         id: messages.length + 2,
-        content: responseText,
+        content: response.content,
         sender: 'ai',
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, aiMessage]);
-    }, 1000);
+    } catch (error) {
+      console.error('Error processing message:', error);
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const quickPrompts = [
+    "Help me write a follow-up message for a lead",
+    "What are the current market trends?",
+    "Give me a cold calling script",
+    "How do I handle price objections?",
+    "19919 Barnfield Place, Riverside, CA 92507",
+    "What's a good closing technique?",
+    "Help me schedule a property showing",
+    "Draft a listing description"
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">AI Assistant</h1>
-      </div>
-
-      <div className="grid md:grid-cols-12 gap-6">
-        <Card className="md:col-span-8 lg:col-span-9">
-          <CardHeader>
-            <CardTitle>Chat with your AI Assistant</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[calc(100vh-16rem)] min-h-[400px] flex flex-col">
-            <div className="flex-1 overflow-auto space-y-4 mb-4 p-1">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex gap-3 max-w-[80%]",
-                    message.sender === 'user' ? "ml-auto" : ""
+    <div className="h-[calc(100vh-8rem)] p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+        {/* Chat Area */}
+        <div className="lg:col-span-3">
+          <Card className="h-full flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                AI Assistant
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col p-0">
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex items-start gap-3 ${
+                        message.sender === 'user' ? 'justify-end' : 'justify-start'
+                      }`}
+                    >
+                      {message.sender === 'ai' && (
+                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                          <Bot className="h-4 w-4 text-white" />
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[80%] rounded-lg p-3 ${
+                          message.sender === 'user'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-900'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                        <span className="text-xs opacity-70 mt-1 block">
+                          {message.timestamp.toLocaleTimeString()}
+                        </span>
+                      </div>
+                      {message.sender === 'user' && (
+                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                          <User className="h-4 w-4 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                        <Bot className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="bg-gray-100 rounded-lg p-3">
+                        <p className="text-gray-500">Thinking...</p>
+                      </div>
+                    </div>
                   )}
-                >
-                  {message.sender === 'ai' && (
-                    <Avatar>
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        <Bot className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div
-                    className={cn(
-                      "rounded-lg p-3",
-                      message.sender === 'user'
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    )}
-                  >
-                    {message.content}
-                  </div>
-                  {message.sender === 'user' && (
-                    <Avatar>
-                      <AvatarFallback>
-                        <User className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
+                  <div ref={messagesEndRef} />
                 </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Textarea
-                placeholder="Type your question here..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                className="min-h-[60px] resize-none"
-              />
-              <Button onClick={handleSendMessage} className="self-end">
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </ScrollArea>
 
-        <Card className="md:col-span-4 lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Quick Prompts</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {[
-              "Generate follow-up message for new lead",
-              "Draft a property description for marketing",
-              "What are current market trends?",
-              "Create a script for cold calling",
-              "Tips for negotiating with buyers"
-            ].map((prompt, index) => (
-              <Button 
-                key={index} 
-                variant="outline" 
-                className="w-full justify-start h-auto py-3 text-left" 
-                onClick={() => {
-                  setInput(prompt);
-                }}
-              >
-                {prompt}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
+              {/* Input Area */}
+              <div className="border-t p-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message..."
+                    disabled={isLoading}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleSendMessage} size="icon" disabled={isLoading || !input.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Prompts */}
+        <div>
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Quick Prompts</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <ScrollArea className="h-[calc(100vh-16rem)]">
+                <div className="space-y-2 pr-4">
+                  {quickPrompts.map((prompt, index) => (
+                    <Button 
+                      key={index} 
+                      variant="outline" 
+                      className="w-full justify-start h-auto py-3 text-left whitespace-normal" 
+                      onClick={() => {
+                        setInput(prompt);
+                      }}
+                    >
+                      {prompt}
+                    </Button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

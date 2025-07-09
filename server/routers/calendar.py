@@ -11,129 +11,297 @@ from dependencies import get_supabase, get_current_user
 
 router = APIRouter()
 
+class CalendarCreate(BaseModel):
+    name: Optional[str] = "My Calendar"
+
+class CalendarResponse(BaseModel):
+    id: UUID
+    profile_id: UUID
+    name: str
+    created_at: datetime
+    updated_at: datetime
+
 class EventBase(BaseModel):
     title: str
-    client: str
-    location: str
-    date: date
-    startTime: str  # Using string as per your existing frontend model
-    endTime: str    # Using string as per your existing frontend model
-    type: str       # This should be one of: "showing", "meeting", "open-house", "call"
+    description: Optional[str] = None
+    start_datetime: datetime
+    end_datetime: Optional[datetime] = None
+    all_day: Optional[bool] = False
 
 class EventCreate(EventBase):
     pass
 
-class EventUpdate(EventBase):
+class EventUpdate(BaseModel):
     title: Optional[str] = None
-    client: Optional[str] = None
-    location: Optional[str] = None
-    date: Optional[date] = None
-    startTime: Optional[str] = None
-    endTime: Optional[str] = None
-    type: Optional[str] = None
+    description: Optional[str] = None
+    start_datetime: Optional[datetime] = None
+    end_datetime: Optional[datetime] = None
+    all_day: Optional[bool] = None
 
 class EventResponse(EventBase):
     id: UUID
-    agent_id: UUID
+    calendar_id: UUID
     created_at: datetime
+    updated_at: datetime
 
-@router.get("/", response_model=List[Dict[str, Any]])
-async def get_events(
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
-    event_type: Optional[str] = Query(None),
+# Calendar endpoints
+@router.post("/calendar", response_model=CalendarResponse, status_code=status.HTTP_201_CREATED)
+async def create_calendar(
+    calendar: CalendarCreate,
     user: dict = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
-    """Get calendar events for the current agent"""
+    """Create a new calendar for the current user"""
     try:
-        # This would be a real implementation if you had an events table
-        # For now, we'll return mock data similar to what's in your frontend
-        events = [
-            {
-                "id": 1,
-                "title": "Property Showing",
-                "client": "Emma Thompson",
-                "location": "123 Main St",
-                "date": "2025-05-22",
-                "startTime": "10:00 AM",
-                "endTime": "11:00 AM",
-                "type": "showing"
-            },
-            {
-                "id": 2,
-                "title": "Client Meeting",
-                "client": "Michael Chen",
-                "location": "Office",
-                "date": "2025-05-22",
-                "startTime": "2:00 PM",
-                "endTime": "3:00 PM",
-                "type": "meeting"
-            },
-            {
-                "id": 3,
-                "title": "Open House",
-                "client": "Public",
-                "location": "456 Oak Ave",
-                "date": "2025-05-23",
-                "startTime": "1:00 PM",
-                "endTime": "4:00 PM",
-                "type": "open-house"
-            },
-            {
-                "id": 4,
-                "title": "Follow-up Call",
-                "client": "Sarah Johnson",
-                "location": "Phone",
-                "date": "2025-05-24",
-                "startTime": "11:00 AM",
-                "endTime": "11:30 AM",
-                "type": "call"
-            }
-        ]
+        result = supabase.table("calendars").insert({
+            "profile_id": str(user.id),
+            "name": calendar.name
+        }).execute()
         
-        # Filter by date range if provided
-        if start_date:
-            events = [e for e in events if date.fromisoformat(e["date"]) >= start_date]
-        if end_date:
-            events = [e for e in events if date.fromisoformat(e["date"]) <= end_date]
-        
-        # Filter by event type if provided
-        if event_type:
-            events = [e for e in events if e["type"] == event_type]
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to create calendar"
+            )
             
-        return events
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create calendar: {str(e)}"
+        )
+
+@router.get("/calendar", response_model=CalendarResponse)
+async def get_user_calendar(
+    user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    """Get the calendar for the current user"""
+    try:
+        result = supabase.table("calendars").select("*").eq("profile_id", str(user.id)).execute()
+        
+        if not result.data:
+            # Create a default calendar if none exists
+            create_result = supabase.table("calendars").insert({
+                "profile_id": str(user.id),
+                "name": "My Calendar"
+            }).execute()
+            return create_result.data[0]
+            
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve calendar: {str(e)}"
+        )
+
+# Event endpoints - backward compatible route
+@router.get("/", response_model=List[EventResponse])
+async def get_events_legacy(
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    """Get calendar events for the current user (legacy endpoint)"""
+    return await get_events(start_date, end_date, user, supabase)
+
+@router.get("/events", response_model=List[EventResponse])
+async def get_events(
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    """Get calendar events for the current user"""
+    try:
+        # First get the user's calendar
+        calendar_result = supabase.table("calendars").select("id").eq("profile_id", str(user.id)).execute()
+        
+        if not calendar_result.data:
+            return []
+            
+        calendar_id = calendar_result.data[0]["id"]
+        
+        # Build query for events
+        query = supabase.table("calendar_events").select("*").eq("calendar_id", calendar_id)
+        
+        # Add date filters if provided
+        if start_date:
+            query = query.gte("start_datetime", start_date.isoformat())
+        if end_date:
+            query = query.lte("start_datetime", end_date.isoformat())
+            
+        result = query.order("start_datetime").execute()
+        
+        return result.data
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve events: {str(e)}"
         )
 
-@router.post("/", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
+@router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 async def create_event(
     event: EventCreate,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
 ):
     """Create a new calendar event"""
-    # This is a mock implementation since we don't have an events table yet
-    # In a real implementation, you would create the event in your database
     try:
-        new_event = {
-            "id": uuid4(),
-            "title": event.title,
-            "client": event.client,
-            "location": event.location,
-            "date": event.date.isoformat(),
-            "startTime": event.startTime,
-            "endTime": event.endTime,
-            "type": event.type,
-            "agent_id": user.get("id"),
-            "created_at": datetime.now().isoformat()
-        }
+        # First get the user's calendar
+        calendar_result = supabase.table("calendars").select("id").eq("profile_id", str(user.id)).execute()
         
-        return new_event
+        if not calendar_result.data:
+            # Create a default calendar if none exists
+            create_calendar_result = supabase.table("calendars").insert({
+                "profile_id": str(user.id),
+                "name": "My Calendar"
+            }).execute()
+            calendar_id = create_calendar_result.data[0]["id"]
+        else:
+            calendar_id = calendar_result.data[0]["id"]
+        
+        # Create the event
+        result = supabase.table("calendar_events").insert({
+            "calendar_id": calendar_id,
+            "title": event.title,
+            "description": event.description,
+            "start_datetime": event.start_datetime.isoformat(),
+            "end_datetime": event.end_datetime.isoformat() if event.end_datetime else None,
+            "all_day": event.all_day
+        }).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to create event"
+            )
+            
+        return result.data[0]
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create event: {str(e)}"
+        )
+
+@router.get("/events/{event_id}", response_model=EventResponse)
+async def get_event(
+    event_id: UUID,
+    user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    """Get a specific event by ID"""
+    try:
+        # First get the user's calendar to ensure they own this event
+        calendar_result = supabase.table("calendars").select("id").eq("profile_id", str(user.id)).execute()
+        
+        if not calendar_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Calendar not found"
+            )
+            
+        calendar_id = calendar_result.data[0]["id"]
+        
+        # Get the event
+        result = supabase.table("calendar_events").select("*").eq("id", str(event_id)).eq("calendar_id", calendar_id).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+            
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve event: {str(e)}"
+        )
+
+@router.put("/events/{event_id}", response_model=EventResponse)
+async def update_event(
+    event_id: UUID,
+    event_update: EventUpdate,
+    user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    """Update an existing event"""
+    try:
+        # First get the user's calendar to ensure they own this event
+        calendar_result = supabase.table("calendars").select("id").eq("profile_id", str(user.id)).execute()
+        
+        if not calendar_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Calendar not found"
+            )
+            
+        calendar_id = calendar_result.data[0]["id"]
+        
+        # Build update data
+        update_data = {}
+        if event_update.title is not None:
+            update_data["title"] = event_update.title
+        if event_update.description is not None:
+            update_data["description"] = event_update.description
+        if event_update.start_datetime is not None:
+            update_data["start_datetime"] = event_update.start_datetime.isoformat()
+        if event_update.end_datetime is not None:
+            update_data["end_datetime"] = event_update.end_datetime.isoformat()
+        if event_update.all_day is not None:
+            update_data["all_day"] = event_update.all_day
+            
+        update_data["updated_at"] = datetime.now().isoformat()
+        
+        # Update the event
+        result = supabase.table("calendar_events").update(update_data).eq("id", str(event_id)).eq("calendar_id", calendar_id).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+            
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update event: {str(e)}"
+        )
+
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_event(
+    event_id: UUID,
+    user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    """Delete an event"""
+    try:
+        # First get the user's calendar to ensure they own this event
+        calendar_result = supabase.table("calendars").select("id").eq("profile_id", str(user.id)).execute()
+        
+        if not calendar_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Calendar not found"
+            )
+            
+        calendar_id = calendar_result.data[0]["id"]
+        
+        # Delete the event
+        result = supabase.table("calendar_events").delete().eq("id", str(event_id)).eq("calendar_id", calendar_id).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+            
+        return None
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete event: {str(e)}"
         )

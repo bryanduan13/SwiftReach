@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 import httpx
 from supabase import create_client, Client
 
-from routers import auth, clients, calendar, conversations
+from routers import auth, clients, calendar, conversations, property
 
 app = FastAPI(
     title="Real Estate CRM API",
@@ -20,8 +20,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:8080",  # Your frontend URL
+        "http://localhost:8081",  # Vite dev server port
         "http://localhost:3000",  # Common React dev server port
         "http://127.0.0.1:8080",
+        "http://127.0.0.1:8081",
         "http://127.0.0.1:3000"
     ],
     allow_credentials=True,
@@ -48,6 +50,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
 app.include_router(calendar.router, prefix="/api/calendar", tags=["calendar"])
 app.include_router(conversations.router, prefix="/api", tags=["conversations"])
+app.include_router(property.router, prefix="/api/property", tags=["property"])  # Add this line
 
 @app.get("/")
 async def root():

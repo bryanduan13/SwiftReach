@@ -8,4 +8,5 @@ supabase>=2.0.3
 python-multipart==0.0.6
 pyjwt==2.8.0
 openai>=1.0.0
+aiofiles>=23.0.0
 

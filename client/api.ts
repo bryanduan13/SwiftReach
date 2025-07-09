@@ -149,22 +149,19 @@ export const clientsApi = {
 export const calendarApi = {
   getEvents: (params?: {
     start_date?: string,
-    end_date?: string,
-    event_type?: 'showing' | 'meeting' | 'open-house' | 'call'
+    end_date?: string
   }) => {
-    return api.get('/calendar', { params });
+    return api.get('/calendar/events', { params });
   },
   
   createEvent: (event: {
     title: string,
-    client: string,
-    location: string,
-    date: string, // ISO date string
-    startTime: string,
-    endTime: string,
-    type: 'showing' | 'meeting' | 'open-house' | 'call'
+    description?: string,
+    start_datetime: string,
+    end_datetime: string,
+    all_day: boolean
   }) => {
-    return api.post('/calendar', event);
+    return api.post('/calendar/events', event);
   },
 };
 
